@@ -1,14 +1,26 @@
 import dash
 from dash import dcc
+import dash_bootstrap_components as dbc
 from dash import html
 import plotly.graph_objects as go
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output
 import pandas as pd
+import plotly.io as pio
+from simple_dwd_weatherforecast import dwdforecast
+from datetime import datetime, timedelta, timezone, date
+
+pio.templates.default = "plotly_white"
+external_stylesheets = [dbc.themes.SKETCHY]
+colors = ["#f4b92c", #light_orange
+          "#ba88ee", #light_purple
+          "#898976", #warm_grey
+          "#f1771c", #intense_orange
+          "#7e2eeb", #intense_purple
+          "#1dd5b3"] #teal
 
 
-external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
-
-
+####### REMOVE BEFORE DEPLOYMENT
+MAP_BOX_KEY = process.env.MAP_BOX_KEY
 ################################################################################
 # APP INITIALIZATION
 ################################################################################
@@ -21,19 +33,8 @@ server = app.server
 ################################################################################
 # PLOTS
 ################################################################################
-df = pd.read_csv('all_data.csv',parse_dates=True)
+df_ = pd.read_pickle('./pred_station_date.pkl')
 
-figure_empty = {'layout': go.Layout(
-                #  colorway=["#5E0DAC", '#FF4F00', '#375CB1', '#FF7400', '#FFF400', '#FF0056'],
-                #   template='plotly_dark',
-                  paper_bgcolor='rgba(0, 0, 0, 0)',
-                  plot_bgcolor='rgba(0, 0, 0, 0)',
-                  margin={'b': 15},
-                  hovermode='x',
-                  autosize=True,
-                  title={'text': 'Traffic density', 'font': {'color': 'grey'}, 'x': 0.5},
-                  xaxis={'range': ['2022-01-01','2022-12-31']},
-              )}
 
 #### Organise labels for drop down
 
@@ -42,15 +43,54 @@ def get_stations(filename):
     # list_station = 
 
     dict_list = []
-    for i in zip(df.station,df.alias):
-        dict_list.append({'label': i[1], 'value': i[0]})
+    for i in zip(df.alias,df.station):
+        dict_list.append({'label': i[0], 'value': i[1]})
 
     return dict_list
 
 
-stations = get_stations('Dauerzaehlstellen.csv')
+stations = get_stations('Dauerzaehlstellen_latlon.csv')
+locations = pd.read_csv('Dauerzaehlstellen_latlon.csv')
 
-def get_figure(traces):
+def get_map_select(stelle,locations):
+    
+    map_ = go.Figure((go.Scattermapbox(
+                        lon = locations['long'],
+                        lat = locations['lat'],
+                        text = locations['alias'],
+                        mode = 'markers',
+                        marker={'size': 12},
+                        hoverinfo='text',
+                        marker_color=colors[1])
+                        ))
+    
+    if stelle:
+        select_pnt = locations[locations.station == stelle]
+        map_.add_traces((go.Scattermapbox(
+                            lon = select_pnt.long,
+                            lat = select_pnt.lat, 
+                            marker_size=20, 
+                            marker_color=colors[0],
+                            hoverinfo='text')))
+        
+    map_.update_layout(
+        margin={"r":10,"t":0,"l":10,"b":0}, 
+        paper_bgcolor="rgb(0,0,0,0)",
+        showlegend=False,
+        mapbox_style="mapbox://styles/mapbox/light-v11",
+        hovermode='closest',
+        mapbox=dict(
+            center=go.layout.mapbox.Center(lat=53.55,lon=10),
+            zoom=9.5,
+            accesstoken=MAP_BOX_KEY
+            )
+        )
+
+    return map_
+
+
+
+def get_figure(traces,stelle):
        min_day = min([min(trace.x) for trace in traces])
        max_day = max([max(trace.x) for trace in traces])
        min_day = shift_time_str(min_day,-1)
@@ -59,13 +99,14 @@ def get_figure(traces):
        figure = {'data': traces,
               'layout': go.Layout(
                 #  colorway=["#5E0DAC", '#FF4F00', '#375CB1', '#FF7400', '#FFF400', '#FF0056'],
+                #  colorway=[colors[1],colors[0],colors[3]]
                 #   template='plotly_dark',
                   paper_bgcolor='rgba(0, 0, 0, 0)',
                   plot_bgcolor='rgba(0, 0, 0, 0)',
-                  margin={'b': 15},
-                  hovermode='x',
+                  margin={'b': 15,'t': 2},
+                  hovermode='closest',
+                  clickmode="select",
                   autosize=True,
-                  title={'text': 'Traffic density', 'font': {'color': 'grey'}, 'x': 0.5},
                   xaxis={'range': [min_day,max_day]},
               ),}
        return figure
@@ -74,94 +115,216 @@ def get_figure(traces):
 def shift_time_str(date_str,day_shift):
     return (pd.to_datetime(date_str) + pd.Timedelta(days=day_shift)).strftime('%Y-%m-%d')
 
-def query_data(df_,zähl,mydate):
-    df = df_.copy(deep=True)
-    date_past = shift_time_str(mydate,-7)
-    date_future = shift_time_str(mydate,1)
-    df = df.query(f'(Zählstelle == {zähl}) and (ds >= "{date_past}") and (ds <= "{date_future}")')
+def query_data(df_,stelle,mydate):
+    df = df_[stelle].copy(deep=True)
+    # date_past = shift_time_str(mydate,-7)
+    # date_future = shift_time_str(mydate,1)
+    df = df.query(f'day_predicted == "{mydate}"')
     return df
     
 
-def get_traces(df_,zähl,mydate):
-    df = query_data(df_,zähl,mydate)
+def get_traces(df_,stelle,mydate):
+    df = query_data(df_,stelle,mydate)
    
     traces = []
 
     ## Past
-    plt_data = df[df.ds <= mydate ]
+    plt_data = df[df.ds < mydate ]
     traces.append(go.Scatter(x=plt_data.ds,
                                  y=plt_data.y,
                                  mode='lines',
                                  opacity=0.7,
+                                 line=dict(
+                                    color=colors[1],
+                                    width=4),
                                  name='Past actual',
                                  textposition='bottom center'))
 
     traces.append(go.Scatter(x=plt_data.ds,
                                  y=plt_data.yhat,
                                  mode='lines',
+                                line=dict(
+                                    color=colors[0],
+                                    width=4),
                                  opacity=0.7,
                                  name='Past model fit',
                                  textposition='bottom center'))
     
     ## Predictions
-    plt_data = df[df.ds > mydate ]
-
-    traces.append(go.Scatter(x=plt_data.ds,
-                                 y=plt_data.y,
-                                 mode='markers',
-                                 opacity=0.7,
-                                 name='Tomorrow actual',
-                                 textposition='bottom center'))
+    plt_data = df[df.ds == mydate ]
 
     traces.append(go.Scatter(x=plt_data.ds,
                                  y=plt_data.yhat,
                                  mode='markers',
+                                  marker=dict(
+                                    color=colors[3],
+                                    size=20),
                                  opacity=0.7,
                                  name='Prediction',
                                  textposition='bottom center'))
 
  
-    return traces
+    return traces, df
 
+
+figure_empty = {'layout': go.Layout(
+                #  colorway=["#5E0DAC", '#FF4F00', '#375CB1', '#FF7400', '#FFF400', '#FF0056'],
+                #   template='plotly_dark',
+                  paper_bgcolor='rgba(0, 0, 0, 0)',
+                  plot_bgcolor='rgba(0, 0, 0, 0)',
+                  margin={'b': 15, 't': 2},
+                  hovermode='x',
+                  autosize=True,
+                  xaxis={'range': ['2022-01-01','2022-12-31']},
+              )}
+
+
+map_empty = get_map_select(stelle=None, locations=locations)
 
 # fig = get_figure(LEGEND, SCORES)
+
+# card = dbc.Card(
+#     [
+#         dbc.CardImg(src=r"assets/ampel.png", top=True, style={'width': '80%'}),
+#         dbc.CardBody(
+#             [
+#                 html.H4("Card title", className="card-title"),
+#                 html.P(
+#                     "Some quick example text to build on the card title and "
+#                     "make up the bulk of the card's content.",
+#                     className="card-text",
+#                 ),
+#                 dbc.Button("Go somewhere", color="primary"),
+#             ],
+#         ),
+#     ],
+#     style={'width': '50%'})
+
+
+def make_card(title,id_,body,style_add,image_add=None):
+    style = {}#'display': 'flex', 'justify-content': 'center'}
+    style.update(style_add)
+    if image_add is None:
+        card_ = html.Div(id=id_, children=[
+            dbc.Card(class_name='card text-center',children=[
+            dbc.CardHeader(html.H3(title)),
+            dbc.CardBody(children=body)
+            ])], style=style)
+    else:
+        card_ = html.Div(id=id_, children=[
+            dbc.Card(class_name='card text-center', children=[
+            dbc.CardHeader(html.H3(title)),
+            dbc.CardBody(children=[dbc.CardImg(src=image_add, style={'width': '45%'},
+                        class_name='align-self-center'),] + body)
+            ])], style=style)
+
+    return card_
+
+def make_indicator(value=100):
+    fig=go.Figure(go.Indicator(
+        mode="delta",
+        value=value,
+        delta={"reference": 100, "relative": True}))
+    fig.update_traces(delta_decreasing_color=colors[5], selector=dict(type='indicator'))
+    fig.update_traces(delta_increasing_color=colors[3], selector=dict(type='indicator'))
+    fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), height=80)
+    return fig
+
+
+
+
+##### GET WEATHER ######
+dwd_weather = dwdforecast.Weather("10147") # Station-ID for HH-Fuhlsbüttel
+time_tomorrow = datetime.now(timezone.utc)+timedelta(days=1)
+temperature_tomorrow = dwd_weather.get_forecast_data(dwdforecast.WeatherDataType.TEMPERATURE, time_tomorrow)
+rain_tomorrow = dwd_weather.get_forecast_data(dwdforecast.WeatherDataType.PRECIPITATION, time_tomorrow)
+sun_tomorrow = dwd_weather.get_forecast_data(dwdforecast.WeatherDataType.SUN_DURATION, time_tomorrow)
+wind_tomorrow = dwd_weather.get_forecast_data(dwdforecast.WeatherDataType.WIND_SPEED, time_tomorrow)
+
+# temperature_tomorrow = 300
+# rain_tomorrow = 2
+# sun_tomorrow = 3600
+# wind_tomorrow = 4
+
+string_temp = ('Temperature: ' + str(round(temperature_tomorrow - 273.51)) + ' \u00b0' + 'C')
+string_rain = ('Rainfall: ' + str(rain_tomorrow) + ' mm')
+string_sun = ('Sunshine: ' + str(round(sun_tomorrow/(60*60),1)) + ' hours')
+string_wind = ('Windspeed: ' + str(round(wind_tomorrow)) + ' m/s')
+ 
 
 ################################################################################
 # LAYOUT
 ################################################################################
+
 app.layout = html.Div([
-        html.Div(children=[
-        html.H2(id="title",
-            children="Neuefische Interactive Dash Plotly Dashboard",
-        ),
-        html.Img(src=r"assets/ampel.png", alt="image",
-                 style={"width": 50, "height": 50})]),
-        html.H3(
-            id="subtitle",
-            children="Add some fish text and click, and the chart will change",
-        ),
-        html.Div(children="Add some text you want (less than 10 characters)!"),
+
+        html.Div(id='title', children=[
+            html.Img(src="./assets/RGB_Jam_banner.png", style={'width': '80%', 'max-width': '600px'})], 
+            style={'display':'flex','flex-flow':'row wrap','justify-content': 'center'}),
+        html.Hr(style={'width':'95%','margin-left': 'auto', 'margin-right': 'auto'}),
+        html.Br(),
+        ### FIRST TOW
+        html.Div(id="first-row", children=[
     
-        dcc.Textarea(
-            id="textarea-state-example",
-            value="",
-            style={"width": "100%", "height": 100},
-        ),
-        html.Button("Submit", id="textarea-state-example-button", n_clicks=0),
-        html.Div(id="textarea-state-example-output", style={"whiteSpace": "pre-line"}),
-        #  Drop down and graphic
-        html.Div(
-                  children=[
-                        html.Div(className='div-for-dropdown',
-                              children=[
-                                    dcc.Dropdown(id='Zselector',
-                                          options=stations,
-                                          multi=False,
-                                        #   style={'backgroundColor': '#1E1E1E'},
-                                          className='Zselector')]),
-                        dcc.Graph(id='timeseries', config={'displayModeBar': False}) 
-                        ]
-        ),
+        dbc.Row([
+    
+        dbc.Col([ html.H4("To drive or not to drive?",),
+            html.P("Welcome to Pump Down the Jam, a proof-of-concept for traffic prediction in Hamburg. We help you decide whether to \
+               leave the car at home and skip the jam, based on tomorrow's traffic prediction and the weather forecast.\
+               To get started, choose the traffic node that lies on your route.",
+               ),
+               html.H4("Proof of concept", style={'margin-left': 'auto', 'margin-right': '0'}),
+            html.P("This is a demo of traffic prediction based on traffic data from 2012-2022, for which data was available from Hamburg GeoOnline. \
+                   Once data an automatic download of yesterday's traffic is available, we will be able to predict tomorrow's traffic. \
+                    You can select a day in March for the prediction.",
+               ),
+            html.Div(dcc.DatePickerSingle(id='my-date-picker-single',
+        min_date_allowed=date(2022, 3, 1),
+        max_date_allowed=date(2022, 3, 31),
+        initial_visible_month=date(2022, 3, 1),
+        date=date(2022, 3, 31))),
+               ], width={"size": 7}, lg=2),#, "offset": 1
+        dbc.Col([
+        ####  Drop down and MAP #####
+        make_card("1. Select the traffic hub", "map-card",style_add={'min-height': '200px'},body=[
+            html.Div(id='map-parent',n_clicks=0, children=[     
+                    dcc.Graph(id='map', figure=map_empty)], style={'min-width': '100px'}),
+            html.Br(),
+            html.Div(id='dropdown-parent', n_clicks=0,children=[
+                dcc.Dropdown(id='dropdown-menu',
+                            options=stations,
+                            multi=False, style={'width': '98%'})
+                            ]) #style={'display': 'flex', 'justify-content': 'center'}
+                    ])], width=7,lg=5),
+        
+        dbc.Col([
+        ##### Card with indicator ########
+        dbc.Row(make_card("2. Check the traffic tomorrow","indic_card", style_add={'width': '100%'},
+                  body=[dcc.Graph(id='indicator', figure=make_indicator()),
+                        html.P(id="indic-text",children="Select a station!",
+                    className="card-text")
+                    ]), class_name='mb-3'),
+        ##### Card with weather #####
+        dbc.Row(make_card("3. Check the weather tomorrow","weath_card", image_add='./assets/rainy.png', style_add={'width': '100%'},
+                  body=[html.H5(string_temp,className="text-muted",style={'margin-top': '15px'}),
+                        html.H5(string_rain,className="text-muted"),
+                        html.H5(string_sun,className="text-muted"),
+                        html.H5(string_wind,className="text-muted")
+                    ]),  class_name='mb-3')
+        ], width=7,lg=3), 
+        ], justify="center")
+                    ]),#,style={'display':'flex','flex-flow':'row wrap','justify-content': 'center'}),
+        html.Hr(style={'width':'95%','margin-left': 'auto', 'margin-right': 'auto'}),
+        html.H1('For Nerds',style={'display':'flex','flex-flow':'row wrap','justify-content': 'center'}),
+        ###### Time series graph ######
+        html.H4(id="time-title",children="Select a station!",style={'display':'flex','flex-flow':'row wrap','justify-content': 'center'}),
+        html.Div(children=[
+            dcc.Graph(id='timeseries', figure=figure_empty, style={'width': '80%',}
+                      ),  
+            ],
+        style={'display':'flex','justify-content': 'center'}),
+        #Disclaimer
+        html.Hr(),
         html.Div([html.P(["Traffic light icon made by ", 
                           html.A("ultimatearm - Flaticon",
                                  href="https://www.flaticon.com/de/kostenlose-icons/ampel")
@@ -172,45 +335,58 @@ app.layout = html.Div([
 ################################################################################
 # INTERACTION CALLBACKS
 ################################################################################
-# https://dash.plotly.com/basic-callbacks
-# @app.callback(
-#     [
-#         Output("textarea-state-example-output", "children"),
-#         Output("bar-chart", "figure"),
-#     ],
-#     Input("textarea-state-example-button", "n_clicks"),
-#     State("textarea-state-example", "value"),
-# )
-# def update_output(n_clicks, value):
-#     fig = get_figure(LEGEND, SCORES)
-#     if n_clicks > 0:
-#         if 0 < len(value) < 10:
-#             text = "you said: " + value
-#             scores = [0.1 * n_clicks, 0.1]
-#             fig = get_figure(LEGEND, scores)
-#             return text, fig
-#         else:
-#             return "Please add a text between 0 and 10 characters!", fig
-#     else:
-#         return "", fig
 
+@app.callback([Output('timeseries', 'figure'),
+               Output('map', 'figure'),
+               Output('time-title', 'children'),
+               Output('indicator','figure'),
+               Output('indic-text','children')],
+              Input('dropdown-menu', 'value'))
 
-@app.callback(Output('timeseries', 'figure'),
-              [Input('Zselector', 'value')])
+def update_from_dropdown(station_num):
+    mydate = '2022-03-31'
 
-def update_timeseries(value):
-    ''' Draw traces ...'''
-
-    mydate = '2022-03-01'
-    if value:
-        traces = get_traces(df,value,mydate)
-        figure = get_figure(traces)
-
+    if (station_num is None):
+        return figure_empty, map_empty, "Select a station", make_indicator(),""
+    
     else:
-        figure = figure_empty
+        traces, df_stelle = get_traces(df_,station_num,mydate)
+        figure_ = get_figure(traces,stelle=station_num)
+        map_ = get_map_select(stelle=station_num,locations=locations)
+        name_ = locations.alias[locations.station == station_num].values[0]
+        title_ = f"Traffic prediction for {name_}"
 
-    return figure
+        percent_ = round(df_stelle[df_stelle.ds == mydate].y_dif_mean.values[0]*100) + 100
+        if percent_ == 100:
+            text_indic_ = "Tomorrow, this location looks like it will have traffic similar to other\
+                equivalent weekdays in the past year."
+        elif percent_ > 100:
+            text_indic_ = "Tomorrow, this location looks like it will have higher than average\
+                traffic compared to equivalent weekdays in the past year"
+        else:
+            text_indic_ = "Tomorrow, this location looks like it will have lower than average\
+                traffic compared to equivalent weekdays in the past year"
 
+        indicator_ = make_indicator(percent_)
+        return figure_, map_, title_, indicator_, text_indic_
+
+
+@app.callback(Output('dropdown-menu', 'value'),
+              [Input('map', 'clickData'),
+              Input('map-parent','n_clicks')])
+
+def set_dropdown_from_map(clickData,n_clicks):
+    if clickData is None:
+        raise dash.exceptions.PreventUpdate
+        
+    elif clickData['points'][0].get('text') is None:
+        return None
+        
+    else:
+        station_name = clickData['points'][0]['text']
+        station_num = locations.station[locations.alias == station_name].values[0]
+
+        return station_num
 
 
 # Add the server clause:
