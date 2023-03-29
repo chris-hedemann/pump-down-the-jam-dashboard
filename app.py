@@ -8,6 +8,7 @@ import pandas as pd
 import plotly.io as pio
 from simple_dwd_weatherforecast import dwdforecast
 from datetime import datetime, timedelta, timezone, date
+import os
 
 pio.templates.default = "plotly_white"
 external_stylesheets = [dbc.themes.SKETCHY]
@@ -20,7 +21,7 @@ colors = ["#f4b92c", #light_orange
 
 
 ####### REMOVE BEFORE DEPLOYMENT
-MAP_BOX_KEY = process.env.MAP_BOX_KEY
+MAP_BOX_KEY = os.environ("MAP_BOX_KEY")
 ################################################################################
 # APP INITIALIZATION
 ################################################################################
