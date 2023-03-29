@@ -266,7 +266,7 @@ app.layout = html.Div([
         initial_visible_month=date(2022, 3, 1),
         display_format='DD MMMM Y',
         date=date(2022, 3, 30))),
-               ], width={"size": 7}, lg=2),#, "offset": 1
+               ], width={"size": 11}, lg=2),#, "offset": 1
         dbc.Col([
         ####  Drop down and MAP #####
         make_card("1. Select the traffic hub", "map-card",style_add={'min-height': '200px'},body=[
@@ -278,7 +278,7 @@ app.layout = html.Div([
                             options=stations,
                             multi=False, style={'width': '98%'})
                             ]) #style={'display': 'flex', 'justify-content': 'center'}
-                    ])], width=7,lg=5),
+                    ])], class_name='mb-3', width=11,lg=5),
         
         dbc.Col([
         ##### Card with indicator ########
@@ -294,7 +294,7 @@ app.layout = html.Div([
                         html.H5(string_sun,className="text-muted"),
                         html.H5(string_wind,className="text-muted")
                     ]),  class_name='mb-3')
-        ], width=7,lg=3), 
+        ], width=11,lg=3), 
         ], justify="center")
                     ]),#,style={'display':'flex','flex-flow':'row wrap','justify-content': 'center'}),
         html.Hr(style={'width':'95%','margin-left': 'auto', 'margin-right': 'auto'}),
