@@ -21,7 +21,7 @@ colors = ["#f4b92c", #light_orange
 
 
 ####### REMOVE BEFORE DEPLOYMENT
-MAP_BOX_KEY = os.environ("MAP_BOX_KEY")
+MAP_BOX_KEY = os.environ["MAP_BOX_KEY"]
 ################################################################################
 # APP INITIALIZATION
 ################################################################################
