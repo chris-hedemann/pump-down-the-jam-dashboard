@@ -1,5 +1,6 @@
 import dash
-from dash import dcc
+import os
+from dash import dcc, html
 import dash_bootstrap_components as dbc
 from dash import html
 import plotly.graph_objects as go
@@ -8,7 +9,6 @@ import pandas as pd
 import plotly.io as pio
 from simple_dwd_weatherforecast import dwdforecast
 from datetime import datetime, timedelta, timezone, date
-import os
 
 pio.templates.default = "plotly_white"
 external_stylesheets = [dbc.themes.SKETCHY]
@@ -96,9 +96,7 @@ def get_figure(traces,stelle):
        max_day = max([max(trace.x) for trace in traces])
        min_day = shift_time_str(min_day,-1)
        max_day = shift_time_str(max_day,1)
-
-       figure = {'data': traces,
-              'layout': go.Layout(
+       figure = go.Figure(data=traces,layout=go.Layout(
                 #  colorway=["#5E0DAC", '#FF4F00', '#375CB1', '#FF7400', '#FFF400', '#FF0056'],
                 #  colorway=[colors[1],colors[0],colors[3]]
                 #   template='plotly_dark',
@@ -109,9 +107,10 @@ def get_figure(traces,stelle):
                   clickmode="select",
                   autosize=True,
                   xaxis={'range': [min_day,max_day]},
-              ),}
+              ))
+       
+       figure.update_xaxes(dtick="D1", tickformat="%a, %d %b")
        return figure
-
 
 def shift_time_str(date_str,day_shift):
     return (pd.to_datetime(date_str) + pd.Timedelta(days=day_shift)).strftime('%Y-%m-%d')
@@ -182,28 +181,8 @@ figure_empty = {'layout': go.Layout(
 
 map_empty = get_map_select(stelle=None, locations=locations)
 
-# fig = get_figure(LEGEND, SCORES)
-
-# card = dbc.Card(
-#     [
-#         dbc.CardImg(src=r"assets/ampel.png", top=True, style={'width': '80%'}),
-#         dbc.CardBody(
-#             [
-#                 html.H4("Card title", className="card-title"),
-#                 html.P(
-#                     "Some quick example text to build on the card title and "
-#                     "make up the bulk of the card's content.",
-#                     className="card-text",
-#                 ),
-#                 dbc.Button("Go somewhere", color="primary"),
-#             ],
-#         ),
-#     ],
-#     style={'width': '50%'})
-
-
 def make_card(title,id_,body,style_add,image_add=None):
-    style = {}#'display': 'flex', 'justify-content': 'center'}
+    style = {}
     style.update(style_add)
     if image_add is None:
         card_ = html.Div(id=id_, children=[
@@ -226,9 +205,15 @@ def make_indicator(value=100):
         mode="delta",
         value=value,
         delta={"reference": 100, "relative": True}))
-    fig.update_traces(delta_decreasing_color=colors[5], selector=dict(type='indicator'))
-    fig.update_traces(delta_increasing_color=colors[3], selector=dict(type='indicator'))
+    if value==100:
+        fig.update_traces(delta_decreasing_color=colors[2], selector=dict(type='indicator'))
+        fig.update_traces(delta_increasing_color=colors[2], selector=dict(type='indicator'))
+    else:
+        fig.update_traces(delta_decreasing_color=colors[5], selector=dict(type='indicator'))
+        fig.update_traces(delta_increasing_color=colors[3], selector=dict(type='indicator'))
     fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), height=80)
+
+
     return fig
 
 
@@ -242,10 +227,6 @@ rain_tomorrow = dwd_weather.get_forecast_data(dwdforecast.WeatherDataType.PRECIP
 sun_tomorrow = dwd_weather.get_forecast_data(dwdforecast.WeatherDataType.SUN_DURATION, time_tomorrow)
 wind_tomorrow = dwd_weather.get_forecast_data(dwdforecast.WeatherDataType.WIND_SPEED, time_tomorrow)
 
-# temperature_tomorrow = 300
-# rain_tomorrow = 2
-# sun_tomorrow = 3600
-# wind_tomorrow = 4
 
 string_temp = ('Temperature: ' + str(round(temperature_tomorrow - 273.51)) + ' \u00b0' + 'C')
 string_rain = ('Rainfall: ' + str(rain_tomorrow) + ' mm')
@@ -275,15 +256,16 @@ app.layout = html.Div([
                To get started, choose the traffic node that lies on your route.",
                ),
                html.H4("Proof of concept", style={'margin-left': 'auto', 'margin-right': '0'}),
-            html.P("This is a demo of traffic prediction based on traffic data from 2012-2022, for which data was available from Hamburg GeoOnline. \
+            html.P("This is a demo of traffic prediction based on traffic data from 2012-2022, for which data was available from GeoPortal Hamburg. \
                    Once data an automatic download of yesterday's traffic is available, we will be able to predict tomorrow's traffic. \
                     You can select a day in March for the prediction.",
                ),
-            html.Div(dcc.DatePickerSingle(id='my-date-picker-single',
+            html.Div(dcc.DatePickerSingle(id='date-picker',
         min_date_allowed=date(2022, 3, 1),
         max_date_allowed=date(2022, 3, 31),
         initial_visible_month=date(2022, 3, 1),
-        date=date(2022, 3, 31))),
+        display_format='DD MMMM Y',
+        date=date(2022, 3, 30))),
                ], width={"size": 7}, lg=2),#, "offset": 1
         dbc.Col([
         ####  Drop down and MAP #####
@@ -326,11 +308,13 @@ app.layout = html.Div([
         style={'display':'flex','justify-content': 'center'}),
         #Disclaimer
         html.Hr(),
-        html.Div([html.P(["Traffic light icon made by ", 
-                          html.A("ultimatearm - Flaticon",
-                                 href="https://www.flaticon.com/de/kostenlose-icons/ampel")
+        html.Div([html.P(["Pump Up The Jam logo by Elise Hedemann. ",
+                          "Raincloud icon created by ", 
+                          html.A("bqlqn - Flaticon",
+                                 href="https://www.flaticon.com/free-icons/rain"),
+                            
                      ])
-                   ])
+                   ],style={'display':'flex','justify-content': 'center'})
                    ])
 
 ################################################################################
@@ -342,10 +326,10 @@ app.layout = html.Div([
                Output('time-title', 'children'),
                Output('indicator','figure'),
                Output('indic-text','children')],
-              Input('dropdown-menu', 'value'))
+              [Input('dropdown-menu', 'value'),
+              Input('date-picker', 'date')])
 
-def update_from_dropdown(station_num):
-    mydate = '2022-03-31'
+def update_from_dropdown(station_num,mydate):
 
     if (station_num is None):
         return figure_empty, map_empty, "Select a station", make_indicator(),""
