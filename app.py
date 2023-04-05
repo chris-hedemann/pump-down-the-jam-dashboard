@@ -309,7 +309,7 @@ app.layout = html.Div([
             dcc.Graph(id='timeseries', figure=figure_empty,
                       ) 
             ],
-        style={'display':'flex','justify-content': 'center', 'width': '80%','min-width': '350px'}),
+        style={'display':'flex','justify-content': 'center', 'width': '80%'}),
         #Disclaimer
         html.Hr(),
         html.Div([html.P(["Pump Up The Jam logo by Elise Hedemann. ",
