@@ -261,8 +261,8 @@ app.layout = html.Div([
                ),
                html.H4("Proof of concept", style={'margin-left': 'auto', 'margin-right': '0'}),
             html.P("This is a demo of traffic prediction based on traffic data from 2012-2022, for which data was available from GeoPortal Hamburg. \
-                   Once data an automatic download of yesterday's traffic is available, we will be able to predict tomorrow's traffic. \
-                    You can select a day in March for the prediction.",
+                   Once an automatic download of yesterday's traffic is available, we will be able to actually predict tomorrow's traffic. \
+                    For the moment, can select a day in March 2022 for the prediction:",
                ),
             html.Div(dcc.DatePickerSingle(id='date-picker',
         min_date_allowed=date(2022, 3, 1),
@@ -305,20 +305,25 @@ app.layout = html.Div([
         html.H1('For Nerds',style={'display':'flex','flex-flow':'row wrap','justify-content': 'center'}),
         ###### Time series graph ######
         html.H4(id="time-title",children="Select a station!",style={'display':'flex','flex-flow':'row wrap','justify-content': 'center'}),
-        html.Div(children=[
-            dcc.Graph(id='timeseries', figure=figure_empty,
-                      ) 
-            ],
-        style={'display':'flex','justify-content': 'center', 'width': '80%'}),
+        html.Div(id="second-row",
+                 children=[dbc.Row([ 
+                                    dbc.Col([
+                                        dcc.Graph(id='timeseries', figure=figure_empty)], 
+                                            width=12, lg=10)
+                                    ], justify="center")
+                           ]
+                 ),
         #Disclaimer
         html.Hr(),
-        html.Div([html.P(["Pump Up The Jam logo by Elise Hedemann. ",
+        html.Div([html.P([html.H6("Credits",className="text-muted"),"Pump Up The Jam logo by Elise Hedemann. ",
                           "Raincloud icon created by ", 
                           html.A("bqlqn - Flaticon",
-                                 href="https://www.flaticon.com/free-icons/rain"),
+                                 href="https://www.flaticon.com/free-icons/rain"), 
+                          ". Weather by @FL550 ", html.A("simple_dwd_weatherforecast.",
+                                 href="https://github.com/FL550/simple_dwd_weatherforecast"),
                             
-                     ])
-                   ],style={'display':'flex','justify-content': 'center'})
+                     ],className="text-center")
+                   ])
                    ])
 
 ################################################################################
