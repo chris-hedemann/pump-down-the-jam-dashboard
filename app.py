@@ -306,7 +306,7 @@ app.layout = html.Div([
         ###### Time series graph ######
         html.H4(id="time-title",children="Select a station!",style={'display':'flex','flex-flow':'row wrap','justify-content': 'center'}),
         html.Div(children=[
-            dcc.Graph(id='timeseries', figure=figure_empty, style={'width': '80%',}
+            dcc.Graph(id='timeseries', figure=figure_empty, style={'width': '80%','min-width': '100px'}
                       ),  
             ],
         style={'display':'flex','justify-content': 'center'}),
