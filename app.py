@@ -9,6 +9,7 @@ import pandas as pd
 import plotly.io as pio
 from simple_dwd_weatherforecast import dwdforecast
 from datetime import datetime, timedelta, timezone, date
+from dotenv import load_dotenv
 
 pio.templates.default = "plotly_white"
 external_stylesheets = [dbc.themes.SKETCHY]
@@ -20,12 +21,15 @@ colors = ["#f4b92c", #light_orange
           "#1dd5b3"] #teal
 
 
-####### REMOVE BEFORE DEPLOYMENT
+####### SECRET MAPBOX KEY
+load_dotenv()
 MAP_BOX_KEY = os.environ["MAP_BOX_KEY"]
+
 ################################################################################
 # APP INITIALIZATION
 ################################################################################
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets,
+                meta_tags=[{'name': "viewport", "content": "width=device-width, initial-scale=1.0"}])
 
 # this is needed by gunicorn command in procfile
 server = app.server

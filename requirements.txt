@@ -9,3 +9,4 @@ plotly==5.13.1
 simple-dwd-weatherforecast==1.1.5
 pandas==1.5.3
 numpy==1.24.2
+python-dotenv
