@@ -306,10 +306,10 @@ app.layout = html.Div([
         ###### Time series graph ######
         html.H4(id="time-title",children="Select a station!",style={'display':'flex','flex-flow':'row wrap','justify-content': 'center'}),
         html.Div(children=[
-            dcc.Graph(id='timeseries', figure=figure_empty, style={'width': '80%','min-width': '300px'}
-                      ),  
+            dcc.Graph(id='timeseries', figure=figure_empty,
+                      ) 
             ],
-        style={'display':'flex','justify-content': 'center'}),
+        style={'display':'flex','justify-content': 'center', 'width': '80%','min-width': '350px'}),
         #Disclaimer
         html.Hr(),
         html.Div([html.P(["Pump Up The Jam logo by Elise Hedemann. ",
