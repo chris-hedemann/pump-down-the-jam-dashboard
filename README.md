@@ -27,7 +27,7 @@ The weather forecast is an up-to-date weather forecast based on the Deutscher We
 
 2. You will need your own Mapbox key saved as 
 `MAP_BOX_KEY="your key"` 
-in a `.env` file locally, otherwise the dashboard will throw an error when it tries to load the map of Hamburg. Get your key here: [https://www.mapbox.com/](https://www.mapbox.com/). You will have to store your credit card details, but there are currently no costs unless you exceed many thousands of map requests per month.
+in a `.env` file locally, otherwise the dashboard will throw an error when it tries to load the map of Hamburg. Get your key here: [https://www.mapbox.com/](https://www.mapbox.com/). You will have to store payment details, but there are currently no costs unless you exceed many thousands of map requests per month.
 4. Load the Dashboard locally with
 - ` $ gunicorn app:server`
 
