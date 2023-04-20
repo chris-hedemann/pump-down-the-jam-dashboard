@@ -1,7 +1,6 @@
 # Plotly Dash dashboard for Pump Up The Jam
 
-This sub-folder contains a copy of the repository we used to create the dashboard on heroku. 
-Access the repository for the dashboard [here](https://github.com/chris-hedemann/pump-up-the-jam-dashboard).
+This is the repo we used to create the dashboard on heroku for the project "Pump Down the Jam".
 
 Access the live dashboard here: [https://pump-down-the-jam.herokuapp.com/](https://pump-down-the-jam.herokuapp.com/).
 
