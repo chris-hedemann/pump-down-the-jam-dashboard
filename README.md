@@ -4,6 +4,8 @@ This is the repo we used to create the dashboard on heroku for the project "Pump
 
 Access the live dashboard here: [https://pump-down-the-jam.herokuapp.com/](https://pump-down-the-jam.herokuapp.com/).
 
+Find the full repo for the backend, including time-series-analysis with Prophet, here: https://github.com/SarahWiesner/as-green-as-it-gets
+
 <img src="./dashboard-screenshot.png" width="600" style="display: block; margin: 0 auto">
 </br>
 </br>
